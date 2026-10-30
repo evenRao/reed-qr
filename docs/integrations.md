@@ -13,7 +13,9 @@ See [streaming](streaming.md) for ownership and backpressure.
 
 ## LiveKit
 
-Install the optional `livekit` extra. Connect the room through the application's
+Install the optional `livekit` extra, which accepts RTC SDK 1.1.21 through 1.x.
+The development lockfile selects RTC 1.2.0; applications can retain an older
+supported RTC version required by their agent SDK. Connect the room through the application's
 normal authentication and subscription flow, then attach `LiveKitScanner` to
 the selected participant or track. Already-subscribed camera tracks are used;
 room-wide subscription policy stays with the application.

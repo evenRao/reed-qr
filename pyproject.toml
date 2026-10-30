@@ -19,7 +19,7 @@ dependencies = []
 
 [project.optional-dependencies]
 livekit = [
-    "livekit>=1.2,<2",
+    "livekit>=1.1.21,<2",
 ]
 
 [dependency-groups]
@@ -30,6 +30,8 @@ manifest-path = "crates/reed-qr-python/Cargo.toml"
 python-source = "python"
 module-name = "reed_qr._native"
 include = [
+    { path = "uv.lock", format = "sdist" },
+    { path = ".python-version", format = "sdist" },
     { path = "rust-toolchain.toml", format = "sdist" },
     { path = "ARCHITECTURE.md", format = "sdist" },
     { path = "LICENSE_AUDIT.md", format = "sdist" },

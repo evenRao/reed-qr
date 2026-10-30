@@ -570,7 +570,7 @@ dev = [
 ]
 
 [package.metadata]
-requires-dist = [{ name = "livekit", marker = "extra == 'livekit'", specifier = ">=1.2,<2" }]
+requires-dist = [{ name = "livekit", marker = "extra == 'livekit'", specifier = ">=1.1.21,<2" }]
 provides-extras = ["livekit"]
 
 [package.metadata.requires-dev]

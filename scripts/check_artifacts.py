@@ -122,6 +122,8 @@ def main() -> None:
         )
         require(files, "reed_qr/integrations/livekit.py")
         if path.suffix != ".whl":
+            require(files, "uv.lock", (ROOT / "uv.lock").read_bytes())
+            require(files, ".python-version", (ROOT / ".python-version").read_bytes())
             require(files, "crates/reed-qr-core/LICENSE")
             require(files, "crates/reed-qr-core/THIRD_PARTY_NOTICES.txt")
             require(files, "crates/reed-qr-python/LICENSE")

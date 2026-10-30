@@ -36,8 +36,9 @@ For the optional LiveKit adapter, install `".[livekit]"` instead of `.` with
 either installer. The base package has no required Python runtime dependencies;
 its compiled extension includes the Rust dependencies.
 
-Windows x86_64 with CPython 3.11–3.15 has been validated locally. Linux and macOS are
-configured in CI and still require validation. See [compatibility](docs/compatibility.md).
+Windows x86_64 with CPython 3.11–3.15 has been validated locally. On Apple Silicon,
+Python tests and typing checks pass with CPython 3.14.3. The complete macOS matrix
+and Linux validation remain pending. See [compatibility](docs/compatibility.md).
 
 Runnable examples: [images](examples/static_image.py) and
 [asynchronous video frames](examples/frame_stream.py).

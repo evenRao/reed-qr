@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import platform
 import re
 import subprocess
 import tomllib
@@ -262,7 +263,9 @@ def python_outputs() -> dict[Path, str]:
                 "name": key[0],
                 "version": key[1],
                 "license": expression,
-                "evidence": "installed Windows wheel metadata and supplied license files",
+                "evidence": (
+                    f"installed {platform.system()} wheel metadata and supplied license files"
+                ),
                 "source": f"https://pypi.org/project/{key[0]}/{key[1]}/",
                 "license_files": sorted(files, key=lambda item: item["path"]),
             }

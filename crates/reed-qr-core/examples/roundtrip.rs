@@ -5,7 +5,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .nth(1)
         .unwrap_or_else(|| "Hello from REED QR".into());
     let image = encode_text(&text, &EncodeOptions::default())?;
-    std::fs::write("demo-qr.png", image.to_png()?)?;
+    std::fs::write("qr.png", image.to_png()?)?;
     let detections = Decoder::default().decode_frame(image.as_frame())?;
     for detection in detections {
         println!("{:?}", detection);

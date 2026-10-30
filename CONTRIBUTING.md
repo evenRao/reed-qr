@@ -8,12 +8,12 @@ On Windows, source builds need Visual Studio C++ Build Tools and the Windows SDK
 
 ```sh
 uv sync --locked --extra livekit
-uv run --locked --extra livekit pytest
+uv run --locked --extra livekit python -m pytest
 uv run --locked --extra livekit ruff check python tests examples scripts
 uv run --locked --extra livekit ruff format --check python tests examples scripts
 uv run --locked --extra livekit mypy
 cargo fmt --all -- --check
-cargo clippy --workspace --all-targets --locked -- -D warnings
+uv run --locked --extra livekit cargo clippy --workspace --all-targets --locked -- -D warnings
 cargo test -p reed-qr-core --locked
 ```
 
@@ -28,6 +28,20 @@ The default interpreter is recorded in `.python-version`. Select another with
 For core-only tests, omit `--extra livekit`; adapter tests skip when RTC is absent.
 The adapter tests use simulated room/track events and require no credentials or
 media devices. Type checking includes the optional adapter and needs the extra.
+
+On macOS or Linux, use a regular installation to test the packaged Python modules:
+
+```sh
+uv sync --locked --extra livekit --no-editable --python 3.14
+.venv/bin/python -m pytest
+.venv/bin/python -m mypy
+cargo test -p reed-qr-core --locked
+```
+
+Replace `3.14` with the supported interpreter being tested. Running the environment's
+Python directly avoids invoking a pytest executable from another installation.
+Keep the non-editable installation for these checks; another `uv sync` without
+`--no-editable` restores the default editable setup.
 
 ## Test data
 
@@ -96,6 +110,8 @@ Python suite against that installed wheel with the LiveKit extra present. Separa
 clean environments verify the base package through pip, `uv pip install`, and
 `uv add`, without LiveKit. Linux wheels use a manylinux_2_28 container. Python 3.15
 jobs also package, compile, and inspect the reusable Rust crate.
+An additional adapter run checks the minimum supported LiveKit RTC version on
+Linux with Python 3.14, independently of the newer SDK in the development lockfile.
 
 Download verified packages and JUnit test reports from the workflow run's
 artifacts; they expire after 14 days. The stable `CI passed` check requires both
