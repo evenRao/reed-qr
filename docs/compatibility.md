@@ -14,7 +14,9 @@ toolchain pinned in `rust-toolchain.toml` and declare Rust 1.99 as the minimum.
 The development environment uses Python 3.15.2 and uv 0.13.6. CI includes all five
 supported Python minors on Linux x86_64, Windows x86_64, and both macOS
 architectures. Linux CI wheels target manylinux_2_28. Every job builds from the
-source distribution and tests the installed wheel. These configured checks do
+source distribution and tests the installed wheel. macOS runners cover version 15
+on Intel and Apple Silicon, plus version 27 on Apple Silicon through `xcode-27`.
+Linux runners cover Ubuntu 24.04 and 26.04 LTS. These configured checks do
 not replace successful platform results; Linux, Intel macOS, and the complete
 Apple Silicon wheel matrix still require successful runs. Ruff and mypy retain Python 3.11 as their source-language
 target so newer development tools do not introduce syntax incompatible with the

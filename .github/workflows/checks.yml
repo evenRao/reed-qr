@@ -25,7 +25,7 @@ env:
 jobs:
   quality:
     name: Formatting and licenses
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -66,7 +66,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-24.04, windows-2025, macos-15-intel, macos-15]
+        os: [ubuntu-24.04, ubuntu-26.04, windows-2025, macos-15-intel, macos-15, xcode-27]
         python: ['3.11', '3.12', '3.13', '3.14', '3.15']
     env:
       UV_PYTHON: ${{ matrix.python }}
@@ -112,7 +112,7 @@ jobs:
           rust-toolchain: '1.99.1'
           target: x86_64
           manylinux: '2_28'
-          args: --sdist --release --locked --compatibility manylinux_2_28 pypi --interpreter python${{ matrix.python }} --out dist
+          args: --sdist --release --locked --compatibility pypi --interpreter python${{ matrix.python }} --out dist
       - name: Build Windows or macOS wheel from source distribution
         if: runner.os != 'Linux'
         run: uv run --no-sync maturin build --sdist --release --locked --compatibility pypi --out dist
@@ -177,7 +177,7 @@ jobs:
     name: CI passed
     if: ${{ always() }}
     needs: [quality, native]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - name: Require all checks to pass

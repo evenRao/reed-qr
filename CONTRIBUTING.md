@@ -105,6 +105,11 @@ x86_64, Windows x86_64, macOS Intel, and macOS Apple Silicon. Rust uses the pinn
 toolchain; the license job also installs `rust-docs` to verify standard-library
 notices.
 
+macOS 15 runners cover Intel and Apple Silicon compatibility. The `xcode-27`
+runner adds macOS 27 coverage on Apple Silicon. Ubuntu 24.04 and 26.04 cover the
+older and current LTS environments, giving 30 platform/Python
+combinations across the complete matrix.
+
 Each platform builds a wheel from the source distribution and runs the full
 Python suite against that installed wheel with the LiveKit extra present. Separate
 clean environments verify the base package through pip, `uv pip install`, and
