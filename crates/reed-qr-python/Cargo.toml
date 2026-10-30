@@ -1,0 +1,21 @@
+[package]
+name = "reed-qr-python"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish = false
+description = "Private PyO3 bindings for the REED QR Python distribution"
+
+include = ["Cargo.toml", "LICENSE", "src/**"]
+
+[lib]
+name = "_native"
+crate-type = ["cdylib"]
+
+[dependencies]
+reed-qr-core = { path = "../reed-qr-core", version = "0.1.0" }
+pyo3 = { workspace = true, features = ["extension-module"] }
+
+[lints]
+workspace = true

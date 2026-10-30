@@ -1,0 +1,184 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+env:
+  CARGO_TERM_COLOR: always
+  UV_CACHE_DIR: .cache/uv
+  UV_PYTHON_PREFERENCE: only-managed
+
+jobs:
+  quality:
+    name: Formatting and licenses
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: '0.13.6'
+          enable-cache: true
+          cache-suffix: quality
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+            Cargo.lock
+            rust-toolchain.toml
+      - name: Install development Python
+        run: uv python install
+      - name: Install pinned Rust tools and license documentation
+        run: |
+          rustup show active-toolchain
+          rustup component add rust-docs
+      - name: Install locked dependencies
+        run: uv sync --locked --extra livekit
+      - name: Check formatting and lint Python
+        run: |
+          cargo fmt --all -- --check
+          uv run --no-sync ruff check python tests examples scripts
+          uv run --no-sync ruff format --check python tests examples scripts
+      - name: Check dependency licenses and notices
+        run: |
+          cargo fetch --locked
+          uv run --no-sync python scripts/update_license_inventory.py --check
+
+  native:
+    name: ${{ matrix.os }} / Python ${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025, macos-15-intel, macos-15]
+        python: ['3.11', '3.12', '3.13', '3.14', '3.15']
+    env:
+      UV_PYTHON: ${{ matrix.python }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: '0.13.6'
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          cache-suffix: ${{ matrix.os }}-py${{ matrix.python }}
+          cache-dependency-glob: |
+            uv.lock
+            pyproject.toml
+            Cargo.lock
+            rust-toolchain.toml
+      - name: Install selected Python and pinned Rust tools
+        run: |
+          uv python install
+          rustup show active-toolchain
+      - name: Install locked dependencies
+        run: uv sync --locked --extra livekit
+      - name: Prefer the selected Windows Python DLLs
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $pythonBase = (uv run --no-sync python -c "import sys; print(sys.base_prefix)").Trim()
+          $pythonBase | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          Join-Path $pythonBase 'DLLs' | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Lint Rust
+        run: uv run --no-sync cargo clippy --workspace --all-targets --locked -- -D warnings
+      - name: Test Rust core
+        run: cargo test -p reed-qr-core --locked
+      - name: Check Python types
+        run: uv run --no-sync mypy
+      - name: Build portable Linux wheel from source distribution
+        if: runner.os == 'Linux'
+        uses: PyO3/maturin-action@e83996d129638aa358a18fbd1dfb82f0b0fb5d3b # v1.51.0
+        with:
+          maturin-version: v1.15.0
+          rust-toolchain: '1.99.1'
+          target: x86_64
+          manylinux: '2_28'
+          args: --sdist --release --locked --compatibility manylinux_2_28 pypi --interpreter python${{ matrix.python }} --out dist
+      - name: Build Windows or macOS wheel from source distribution
+        if: runner.os != 'Linux'
+        run: uv run --no-sync maturin build --sdist --release --locked --compatibility pypi --out dist
+      - name: Build and verify distributable Rust crate
+        if: matrix.python == '3.15'
+        run: |
+          cargo package -p reed-qr-core --locked
+          uv run --no-sync python scripts/check_artifacts.py --crate target/package/reed-qr-core-*.crate
+      - name: Check Python artifact licenses and contents
+        run: uv run --no-sync python scripts/check_artifacts.py
+      - name: Install built wheel for the full Python test suite
+        run: |
+          uv run --no-sync python - <<'PY'
+          import pathlib
+          import subprocess
+          import sys
+
+          wheel, = pathlib.Path('dist').glob('*.whl')
+          subprocess.run([
+              'uv', 'pip', 'install', '--python', sys.executable,
+              '--no-index', '--no-deps', '--reinstall', str(wheel),
+          ], check=True)
+          PY
+          uv run --no-sync python - <<'PY'
+          import pathlib
+          import sys
+
+          import reed_qr
+          assert pathlib.Path(reed_qr.__file__).resolve().is_relative_to(
+              pathlib.Path(sys.prefix).resolve()
+          ), 'Tests must import the installed wheel'
+          PY
+      - name: Test installed wheel with optional LiveKit adapter
+        run: uv run --no-sync pytest --junitxml=reports/pytest.xml
+      - name: Test base wheel with pip, uv pip, and uv add
+        run: uv run --no-sync python scripts/verify_wheel.py
+      - name: Save Python test report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tests-${{ matrix.os }}-py${{ matrix.python }}
+          path: reports/pytest.xml
+          if-no-files-found: ignore
+          retention-days: 14
+      - name: Save verified packages
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: packages-${{ matrix.os }}-py${{ matrix.python }}
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+            target/package/*.crate
+          if-no-files-found: error
+          retention-days: 14
+
+  ci:
+    name: CI passed
+    if: ${{ always() }}
+    needs: [quality, native]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require all checks to pass
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          NATIVE_RESULT: ${{ needs.native.result }}
+        run: |
+          test "$QUALITY_RESULT" = success
+          test "$NATIVE_RESULT" = success

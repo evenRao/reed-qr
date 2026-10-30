@@ -1,0 +1,65 @@
+[build-system]
+requires = ["maturin>=1.15,<2"]
+build-backend = "maturin"
+
+[project]
+name = "reed-qr"
+version = "0.1.0"
+description = "QR encoding and decoding with a Rust core and typed Python API"
+readme = "README.md"
+requires-python = ">=3.11,<3.16"
+license = "MIT"
+license-files = [
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "licenses/RUST-THIRD-PARTY.txt",
+    "licenses/RUST-STDLIB.html",
+]
+dependencies = []
+
+[project.optional-dependencies]
+livekit = [
+    "livekit>=1.2,<2",
+]
+
+[dependency-groups]
+dev = ["maturin>=1.15,<2", "pytest>=9.1.1,<10", "ruff>=0.17.3,<1", "mypy>=2.4,<3", "segno>=1.6.6,<2"]
+
+[tool.maturin]
+manifest-path = "crates/reed-qr-python/Cargo.toml"
+python-source = "python"
+module-name = "reed_qr._native"
+include = [
+    { path = "rust-toolchain.toml", format = "sdist" },
+    { path = "ARCHITECTURE.md", format = "sdist" },
+    { path = "LICENSE_AUDIT.md", format = "sdist" },
+    { path = "CONTRIBUTING.md", format = "sdist" },
+    { path = "docs/**/*.md", format = "sdist" },
+    { path = "examples/**/*.py", format = "sdist" },
+    { path = "scripts/*.py", format = "sdist" },
+    { path = "tests/**/*.py", format = "sdist" },
+    { path = "licenses/manifest.json", format = "sdist" },
+    { path = "licenses/python-dependencies.json", format = "sdist" },
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/python"]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["python/reed_qr"]
+
+[[tool.mypy.overrides]]
+# NumPy's current installed stubs use newer grammar than our 3.11 source target.
+# We do not expose NumPy types; keep its transitive stubs outside this check.
+module = ["numpy", "numpy.*"]
+follow_imports = "skip"
+follow_imports_for_stubs = true

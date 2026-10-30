@@ -1,0 +1,16 @@
+/target/
+/.venv/
+/.cache/
+/dist/
+/reports/
+**/__pycache__/
+*.py[cod]
+*.pyd
+*.so
+/.pytest_cache/
+/.ruff_cache/
+/.mypy_cache/
+/.env
+/.env.*
+/qr.png
+/.vscode/

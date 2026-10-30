@@ -1,0 +1,21 @@
+[package]
+name = "reed-qr-core"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "Local QR encoding and decoding with validated frame contracts"
+readme = "README.md"
+
+include = ["Cargo.toml", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.txt", "src/**", "examples/**", "tests/**"]
+
+[dependencies]
+rxing.workspace = true
+image.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+qrcode = { version = "=0.14.1", default-features = false }
+
+[lints]
+workspace = true
