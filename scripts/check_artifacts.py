@@ -121,6 +121,13 @@ def main() -> None:
             files, "licenses/RUST-STDLIB.html", (ROOT / "licenses/RUST-STDLIB.html").read_bytes()
         )
         require(files, "reed_qr/integrations/livekit.py")
+        require(files, "reed_qr/cli.py", (ROOT / "python/reed_qr/cli.py").read_bytes())
+        require(files, "reed_qr/__main__.py")
+        require(
+            files,
+            "reed_qr/GETTING_STARTED.md",
+            (ROOT / "python/reed_qr/GETTING_STARTED.md").read_bytes(),
+        )
         if path.suffix != ".whl":
             require(files, "uv.lock", (ROOT / "uv.lock").read_bytes())
             require(files, ".python-version", (ROOT / ".python-version").read_bytes())

@@ -70,6 +70,14 @@ versions and scopes without depending on which interpreter is running it.
 
 ## Packaging
 
+The installed `reed-qr` command and `python -m reed_qr` provide the welcome screen,
+bundled `guide`, installation `doctor` (also `--json`), and `docs` link.
+Only `docs --open` requests a browser. Keep the bundled guide in
+`python/reed_qr/GETTING_STARTED.md` aligned with the README's working examples.
+The CLI tests check that guidance and diagnostics remain available when the
+native extension cannot load. Clean-wheel checks exercise both entry points,
+the bundled guide, and the real codec round trip without the LiveKit extra.
+
 On Windows with multiple Python installations or SDKs, put the selected Python
 runtime ahead of unrelated DLL directories before building. CI configures this
 automatically. In PowerShell:

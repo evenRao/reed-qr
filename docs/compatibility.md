@@ -6,9 +6,9 @@ toolchain pinned in `rust-toolchain.toml` and declare Rust 1.99 as the minimum.
 | Platform | Validation |
 | --- | --- |
 | Windows x86_64 | 44 core/adapter tests and strict type checks pass on CPython 3.11.18, 3.12.16, 3.13.18, 3.14.10 and 3.15.2 |
-| Linux x86_64 | CI configured; build and installation not yet verified |
-| macOS Apple Silicon | 44 Python tests and strict type checks pass on CPython 3.14.3 with a non-editable source installation; Rust tests and the complete wheel matrix remain pending |
-| macOS Intel | CI configured; build and installation not yet verified |
+| Linux x86_64 | CI covers Ubuntu 24.04 and 26.04 with CPython 3.11–3.15, Rust tests, manylinux_2_28 builds, and clean wheel installations |
+| macOS Apple Silicon | CI covers macOS 15 and 27 with CPython 3.11–3.15; 44 Python tests and strict type checks also pass locally on CPython 3.14.3 with a non-editable installation |
+| macOS Intel | CI covers macOS 15 with CPython 3.11–3.15, Rust tests, native wheel builds, and clean installations |
 | Other Python/platform combinations | Require their own native build and test results |
 
 The development environment uses Python 3.15.2 and uv 0.13.6. CI includes all five
@@ -16,11 +16,12 @@ supported Python minors on Linux x86_64, Windows x86_64, and both macOS
 architectures. Linux CI wheels target manylinux_2_28. Every job builds from the
 source distribution and tests the installed wheel. macOS runners cover version 15
 on Intel and Apple Silicon, plus version 27 on Apple Silicon through `xcode-27`.
-Linux runners cover Ubuntu 24.04 and 26.04 LTS. These configured checks do
-not replace successful platform results; Linux, Intel macOS, and the complete
-Apple Silicon wheel matrix still require successful runs. Ruff and mypy retain Python 3.11 as their source-language
-target so newer development tools do not introduce syntax incompatible with the
-oldest supported consumer interpreter.
+Linux runners cover Ubuntu 24.04 and 26.04 LTS. The latest results, JUnit reports,
+and package artifacts are available in the
+[CI runs](https://github.com/evenRao/reed-qr/actions/workflows/checks.yml).
+Ruff and mypy retain Python 3.11 as their source-language target so newer
+development tools do not introduce syntax incompatible with the oldest
+supported consumer interpreter.
 
 Windows wheels for all five Python versions passed clean installation checks
 using pip, `uv pip install`, and `uv add`. The checks use isolated Python mode

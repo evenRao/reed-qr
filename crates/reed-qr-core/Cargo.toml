@@ -6,6 +6,9 @@ rust-version.workspace = true
 license.workspace = true
 description = "Local QR encoding and decoding with validated frame contracts"
 readme = "README.md"
+repository = "https://github.com/evenRao/reed-qr"
+homepage = "https://github.com/evenRao/reed-qr#readme"
+documentation = "https://docs.rs/reed-qr-core"
 
 include = ["Cargo.toml", "README.md", "LICENSE", "THIRD_PARTY_NOTICES.txt", "src/**", "examples/**", "tests/**"]
 

@@ -1,4 +1,4 @@
-//! Local, synchronous QR processing. The public API is experimental.
+#![doc = include_str!("../README.md")]
 
 mod codec;
 mod encode;

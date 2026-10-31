@@ -17,6 +17,14 @@ license-files = [
 ]
 dependencies = []
 
+[project.urls]
+Documentation = "https://github.com/evenRao/reed-qr#readme"
+Source = "https://github.com/evenRao/reed-qr"
+Issues = "https://github.com/evenRao/reed-qr/issues"
+
+[project.scripts]
+reed-qr = "reed_qr.cli:main"
+
 [project.optional-dependencies]
 livekit = [
     "livekit>=1.1.21,<2",
