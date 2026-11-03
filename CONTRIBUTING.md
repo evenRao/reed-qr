@@ -88,11 +88,10 @@ $env:PATH = "$pythonBase;$pythonBase\DLLs;$env:PATH"
 ```
 
 ```sh
-uv run --locked --extra livekit maturin build --release --locked --out dist
-uv run --locked --extra livekit maturin sdist --out dist
+uv run --locked --extra livekit maturin build --sdist --release --locked --compatibility pypi --out dist
 uv run --locked --extra livekit python scripts/check_artifacts.py
 uv run --locked --extra livekit python scripts/verify_wheel.py
-cargo package -p reed-qr-core --locked --allow-dirty
+cargo package -p reed-qr-core --locked
 ```
 
 Select a wheel explicitly with `scripts/verify_wheel.py --wheel PATH` when needed.

@@ -5,6 +5,9 @@ Python API, bounded asynchronous frame scanning, and an optional LiveKit adapter
 Applications can expose these operations as tools in an assistant or agent framework.
 All QR processing runs locally; the codec needs no model provider or API key.
 
+Supported symbols are QR Codes. Other barcode formats, including UPC, EAN, and
+Code 128, are not supported.
+
 **Start here:** [Install](#1-install-reed-qr) · [Verify](#2-check-your-installation) ·
 [First QR code](#3-create-and-read-your-first-qr-code) ·
 [LiveKit](#8-scan-a-livekit-video-track) · [Rust](#10-use-the-rust-crate)
@@ -37,9 +40,8 @@ The API is experimental in the `0.1.x` series. Review
 
 ## 1. Install REED QR
 
-Release status: the first release is being prepared. Registry commands below
-apply once `0.1.0` is published. Until then, use the
-[source checkout instructions](#install-from-a-source-checkout).
+Install `reed-qr` from PyPI with pip or uv. To build from the repository instead,
+follow the [source checkout instructions](#install-from-a-source-checkout).
 
 ### Requirements
 
@@ -510,7 +512,7 @@ particular agent SDK is required by the QR codec.
 
 The reusable `reed-qr-core` library exposes the codec without Python or LiveKit.
 It declares Rust **1.99** as its minimum version; contributor builds use pinned
-Rust 1.99.1. After publication, add it to an application:
+Rust 1.99.1. Add it to an application:
 
 ```sh
 cargo new qr-demo
@@ -535,12 +537,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Run `cargo run`. Before publication, use a path dependency pointing to
+Run `cargo run`. To use a source checkout, add a path dependency pointing to
 `crates/reed-qr-core`. The crate is a library dependency; `cargo install reed-qr-core`
 does not install the Python onboarding command.
 
 See the [crate guide](https://github.com/evenRao/reed-qr/blob/main/crates/reed-qr-core/README.md)
-and [Rust API reference](https://docs.rs/reed-qr-core) (available after publication).
+and [Rust API reference](https://docs.rs/reed-qr-core).
 The internal `reed-qr-python` PyO3 binding crate is private and not published
 independently.
 

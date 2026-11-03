@@ -2,6 +2,7 @@
 
 Local QR encoding and decoding for Rust applications. Supports PNG/JPEG image
 bytes and packed Gray8, RGB24, RGBA8 and BGRA8 frames with explicit row stride.
+Only QR Code symbols are supported; other barcode formats are not enabled.
 
 [Source](https://github.com/evenRao/reed-qr) ·
 [API reference](https://docs.rs/reed-qr-core) ·
@@ -10,9 +11,7 @@ bytes and packed Gray8, RGB24, RGBA8 and BGRA8 frames with explicit row stride.
 
 ## 1. Add the library
 
-Requires Rust **1.99 or newer**. The first release is being prepared; registry
-commands work after `0.1.0` is published. The API reference becomes available
-after publication as well.
+Requires Rust **1.99 or newer**. Add the crate from crates.io:
 
 ```sh
 cargo new qr-demo
@@ -20,7 +19,7 @@ cd qr-demo
 cargo add reed-qr-core@0.1.0
 ```
 
-For a source checkout before publication, add a path dependency instead:
+To use a source checkout, add a path dependency instead:
 
 ```toml
 [dependencies]

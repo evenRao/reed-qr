@@ -5,8 +5,10 @@ This guide is bundled with your installation and can be read offline:
     python -m reed_qr guide
 
 In a uv project, prefix commands with `uv run`. Use the same Python environment
-for installation and execution. Registry installation requires publication;
-source installation uses `python -m pip install .` from the repository checkout.
+for installation and execution. Install from PyPI with `python -m pip install reed-qr`,
+or use `python -m pip install .` from a source checkout.
+
+Only QR Code symbols are supported; other barcode formats are not enabled.
 
 ## 1. Verify your installation
 
@@ -146,14 +148,14 @@ Complete example: https://github.com/evenRao/reed-qr#8-scan-a-livekit-video-trac
 
 ## 7. Rust applications
 
-Use Rust 1.99 or newer. After publication, add the library:
+Use Rust 1.99 or newer. Add the library from crates.io:
 
     cargo add reed-qr-core@0.1.0
 
 The `reed_qr_core` API provides `encode_text`, `Decoder`, `FrameView`, and `Limits`.
 It runs synchronously and requires neither Python nor LiveKit. Add the library
 as a dependency; it does not install the Python onboarding command.
-Before publication, use a path dependency to the checkout's crates/reed-qr-core.
+For source-checkout usage, add a path dependency to crates/reed-qr-core instead.
 
 Guide: https://github.com/evenRao/reed-qr/blob/main/crates/reed-qr-core/README.md
 
