@@ -14,3 +14,5 @@
 /.env.*
 /qr.png
 /.vscode/
+/.release-input/
+/.release-dist/

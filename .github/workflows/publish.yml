@@ -1,0 +1,111 @@
+name: Publish to PyPI
+
+on:
+  workflow_dispatch:
+    inputs:
+      ci_run_id:
+        description: Successful CI run ID for the current main commit
+        required: true
+        type: string
+      version:
+        description: Release version matching pyproject.toml and Cargo.toml
+        required: true
+        default: '0.1.0'
+        type: string
+      publish:
+        description: Upload to PyPI (leave unchecked to validate and stage only)
+        required: true
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: pypi-release
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prepare:
+    name: Verify and stage release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      artifact_id: ${{ steps.release.outputs.artifact-id }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify source CI run and select packages
+        id: source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: >-
+          python3 scripts/prepare_pypi_release.py check-run
+          --run-id "$CI_RUN_ID" --version "$RELEASE_VERSION"
+      - name: Download verified CI packages
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ steps.source.outputs.artifact_ids }}
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ inputs.ci_run_id }}
+          path: .release-input
+          merge-multiple: false
+          digest-mismatch: error
+      - name: Assemble the complete release
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: >-
+          python3 scripts/prepare_pypi_release.py stage
+          --version "$RELEASE_VERSION" --artifacts .release-input --out .release-dist
+      - name: Check artifact licenses and contents
+        run: python3 scripts/check_artifacts.py --dist .release-dist
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+        with:
+          version: '0.13.6'
+          enable-cache: false
+      - name: Check PyPI metadata and README rendering
+        run: uvx twine check --strict .release-dist/*
+      - name: Save release packages for review and publication
+        id: release
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: pypi-release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: .release-dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Upload to PyPI
+    needs: prepare
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: pypi
+      url: https://pypi.org/p/reed-qr
+    permissions:
+      id-token: write
+    steps:
+      - name: Download the staged release
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: ${{ needs.prepare.outputs.artifact_id }}
+          path: .release-dist
+          digest-mismatch: error
+      - name: Publish using the configured Trusted Publisher
+        uses: pypa/gh-action-pypi-publish@7245906fb61fa33a13554f9d5fb856fe61758086 # v1.14.3
+        with:
+          packages-dir: .release-dist/
+          attestations: true
+          skip-existing: false
