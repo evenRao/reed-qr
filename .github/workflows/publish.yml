@@ -82,6 +82,7 @@ jobs:
         with:
           name: pypi-release-${{ github.run_id }}-${{ github.run_attempt }}
           path: .release-dist/*
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 14
 
