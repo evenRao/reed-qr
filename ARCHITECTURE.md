@@ -50,9 +50,10 @@ closes readers and workers. Native decoding is not forcibly interrupted. See the
 
 rxing raw result bytes contain QR codewords and are not treated as application
 payload bytes. The core verifies byte-mode payloads, optionally with ECI, before
-exposing complete `payload_bytes`. Numeric/alphanumeric modes return text.
-Mixed modes and structured append retain available segments without labeling
-them as a complete exact payload. Non-UTF-8 text is not generally guaranteed.
+exposing complete `payload_bytes`. Numeric and alphanumeric data can return
+text when mixed with ASCII byte segments without ECI or valid UTF-8 segments
+with UTF-8 ECI. Mixed modes retain individual byte segments as partial data.
+Structured append retains available segments without a complete payload.
 
 Landmarks identify detector points; the API does not infer four outer corners.
 Application actions remain outside the codec and scanner.

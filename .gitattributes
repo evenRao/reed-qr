@@ -13,4 +13,5 @@
 .python-version text eol=lf
 LICENSE text eol=lf
 *.html text eol=lf
+licenses/RUST-STDLIB.html linguist-documentation
 *.png binary

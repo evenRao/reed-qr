@@ -150,7 +150,7 @@ Complete example: https://github.com/evenRao/reed-qr#8-scan-a-livekit-video-trac
 
 Use Rust 1.99 or newer. Add the library from crates.io:
 
-    cargo add reed-qr-core@0.1.0
+    cargo add reed-qr-core@0.1.2
 
 The `reed_qr_core` API provides `encode_text`, `Decoder`, `FrameView`, and `Limits`.
 It runs synchronously and requires neither Python nor LiveKit. Add the library

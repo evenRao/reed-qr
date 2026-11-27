@@ -10,7 +10,7 @@ on:
       version:
         description: Release version matching pyproject.toml and Cargo.toml
         required: true
-        default: '0.1.0'
+        default: '0.1.2'
         type: string
       publish:
         description: Upload to PyPI (leave unchecked to validate and stage only)

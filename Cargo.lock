@@ -506,7 +506,7 @@ dependencies = [
 
 [[package]]
 name = "reed-qr-core"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "image",
  "qrcode",
@@ -516,7 +516,7 @@ dependencies = [
 
 [[package]]
 name = "reed-qr-python"
-version = "0.1.0"
+version = "0.1.2"
 dependencies = [
  "pyo3",
  "reed-qr-core",

@@ -30,7 +30,7 @@ Source hashes: [Python inventory](../../licenses/python-dependencies.json).
 | protobuf | 7.36.2 | BSD-3-Clause | extra:livekit |
 | pygments | 2.21.0 | BSD-2-Clause | group:dev |
 | pytest | 9.2.0 | MIT | group:dev |
-| reed-qr | 0.1.0 | MIT | project |
+| reed-qr | 0.1.2 | MIT | project |
 | ruff | 0.17.3 | MIT | group:dev |
 | segno | 1.6.6 | BSD-3-Clause | group:dev |
 | types-protobuf | 7.35.1.20260906 | Apache-2.0 | extra:livekit |

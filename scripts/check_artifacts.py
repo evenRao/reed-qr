@@ -46,14 +46,18 @@ def read_archive(path: Path) -> dict[str, bytes]:
         }
 
 
-def require(files: dict[str, bytes], suffix: str, content: bytes | None = None) -> None:
+def require(
+    files: dict[str, bytes], path: str, content: bytes | None = None, *, exact: bool = False
+) -> None:
     matches = [
-        value for name, value in files.items() if name == suffix or name.endswith("/" + suffix)
+        value
+        for name, value in files.items()
+        if name == path or (not exact and name.endswith("/" + path))
     ]
     if not matches or not all(matches):
-        raise ValueError(f"Missing or empty artifact file: {suffix}")
+        raise ValueError(f"Missing or empty artifact file: {path}")
     if content is not None and not all(value == content for value in matches):
-        raise ValueError(f"Stale artifact file: {suffix}")
+        raise ValueError(f"Stale artifact file: {path}")
 
 
 def check_boundaries(files: dict[str, bytes], *, source: bool = False) -> None:
@@ -100,8 +104,9 @@ def main() -> None:
 
     for path in wheels + sources:
         files = read_archive(path)
-        check_boundaries(files, source=path.suffix != ".whl")
-        metadata_name = "METADATA" if path.suffix == ".whl" else "PKG-INFO"
+        is_wheel = path.suffix == ".whl"
+        check_boundaries(files, source=not is_wheel)
+        metadata_name = "METADATA" if is_wheel else "PKG-INFO"
         metadata_files = [
             value for name, value in files.items() if name.endswith("/" + metadata_name)
         ]
@@ -110,7 +115,15 @@ def main() -> None:
             for value in metadata_files
         ):
             raise ValueError(f"Artifact license metadata does not match {project_license}")
-        require(files, "LICENSE", (ROOT / "LICENSE").read_bytes())
+        # Third-party fixtures can carry their own LICENSE in a different directory.
+        name_and_version = path.name.split("-", 2)[:2]
+        source_root = path.name.removesuffix(".tar.gz")
+        license_path = (
+            f"{'-'.join(name_and_version)}.dist-info/licenses/LICENSE"
+            if is_wheel
+            else f"{source_root}/LICENSE"
+        )
+        require(files, license_path, (ROOT / "LICENSE").read_bytes(), exact=True)
         require(files, "THIRD_PARTY_NOTICES.md", (ROOT / "THIRD_PARTY_NOTICES.md").read_bytes())
         require(
             files,
@@ -128,12 +141,18 @@ def main() -> None:
             "reed_qr/GETTING_STARTED.md",
             (ROOT / "python/reed_qr/GETTING_STARTED.md").read_bytes(),
         )
-        if path.suffix != ".whl":
+        if not is_wheel:
             require(files, "uv.lock", (ROOT / "uv.lock").read_bytes())
             require(files, ".python-version", (ROOT / ".python-version").read_bytes())
-            require(files, "crates/reed-qr-core/LICENSE")
+            for crate in ("reed-qr-core", "reed-qr-python"):
+                crate_license = f"crates/{crate}/LICENSE"
+                require(
+                    files,
+                    f"{source_root}/{crate_license}",
+                    (ROOT / crate_license).read_bytes(),
+                    exact=True,
+                )
             require(files, "crates/reed-qr-core/THIRD_PARTY_NOTICES.txt")
-            require(files, "crates/reed-qr-python/LICENSE")
         print(f"Artifact licenses and boundaries passed: {path.name}")
 
     if args.rust_crate:
@@ -145,7 +164,12 @@ def main() -> None:
             for value in crate_manifests
         ):
             raise ValueError("Rust crate license metadata does not match the project license")
-        require(files, "LICENSE", (ROOT / "crates/reed-qr-core/LICENSE").read_bytes())
+        require(
+            files,
+            f"{args.rust_crate.stem}/LICENSE",
+            (ROOT / "crates/reed-qr-core/LICENSE").read_bytes(),
+            exact=True,
+        )
         require(
             files,
             "THIRD_PARTY_NOTICES.txt",
