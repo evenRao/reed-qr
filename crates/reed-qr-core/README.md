@@ -16,7 +16,7 @@ Requires Rust **1.99 or newer**. Add the crate from crates.io:
 ```sh
 cargo new qr-demo
 cd qr-demo
-cargo add reed-qr-core@0.1.0
+cargo add reed-qr-core@0.1.2
 ```
 
 To use a source checkout, add a path dependency instead:
@@ -80,8 +80,10 @@ is a convenience for the generated image's own Gray8 buffer.
 ## 4. Handle results and limits
 
 The API is experimental. Encoding accepts nonempty UTF-8 text. Verified byte-mode
-symbols expose exact payload bytes; numeric/alphanumeric symbols expose text.
-Mixed modes and structured append have limited complete-payload support.
+symbols expose exact payload bytes. Numeric and alphanumeric data can be decoded
+as text, including when mixed with byte segments containing ASCII without ECI
+or valid UTF-8 with an explicit UTF-8 ECI. Mixed-mode byte segments represent
+only part of the payload. Structured append does not expose a complete payload.
 Detector landmarks are returned; four outer corners are not available.
 
 The default decoder allows 4096 pixels per dimension, 2,190,400 total pixels,

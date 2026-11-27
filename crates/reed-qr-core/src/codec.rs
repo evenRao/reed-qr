@@ -1,8 +1,11 @@
 use rxing::{
     BinaryBitmap, DecodeHints, Exceptions, Luma8LuminanceSource,
-    common::{BitSource, DetectorRXingResult, HybridBinarizer},
+    common::{BitSource, DetectorRXingResult, Eci, HybridBinarizer},
     multi::qrcode::detector::MultiDetector,
-    qrcode::decoder::{QRCodeDecoderMetaData, qrcode_decoder},
+    qrcode::{
+        common::{Mode, Version},
+        decoder::{QRCodeDecoderMetaData, qrcode_decoder},
+    },
 };
 
 use crate::{Detection, Error, Landmark, PayloadStatus};
@@ -47,24 +50,26 @@ pub(crate) fn decode(pixels: Vec<u8>, width: u32, height: u32) -> Result<Vec<Det
         }
         let segments = decoded.getByteSegments().clone();
         let version = (bits.getWidth() - 17) / 4;
-        // A conservative gate, not a replacement decoder: trust byte segments only
-        // when the backend codewords contain exclusively BYTE and ECI segments.
-        let payload_bytes = if !decoded.hasStructuredAppend()
-            && byte_only(decoded.getRawBytes(), version, &segments)
-        {
-            Some(segments.concat())
+        let backend_text = decoded.getText();
+        let (payload_bytes, text) = if decoded.hasStructuredAppend() {
+            (None, None)
+        } else if segments.is_empty() {
+            (None, Some(backend_text.to_owned()))
         } else {
-            None
-        };
-        let text = if let Some(bytes) = &payload_bytes {
-            std::str::from_utf8(bytes)
-                .ok()
-                .filter(|text| *text == decoded.getText())
-                .map(str::to_owned)
-        } else if segments.is_empty() && !decoded.hasStructuredAppend() {
-            Some(decoded.getText().to_owned())
-        } else {
-            None
+            match verify_payload(decoded.getRawBytes(), version, &segments) {
+                Some(VerifiedPayload::ExactBytes) => {
+                    let bytes = segments.concat();
+                    let text = std::str::from_utf8(&bytes)
+                        .ok()
+                        .filter(|text| *text == backend_text)
+                        .map(str::to_owned);
+                    (Some(bytes), text)
+                }
+                Some(VerifiedPayload::MixedText { utf8_len }) if backend_text.len() == utf8_len => {
+                    (None, Some(backend_text.to_owned()))
+                }
+                _ => (None, None),
+            }
         };
         let status = if payload_bytes.is_some() {
             PayloadStatus::ExactBytes
@@ -99,45 +104,88 @@ pub(crate) fn decode(pixels: Vec<u8>, width: u32, height: u32) -> Result<Vec<Det
     Ok(detections)
 }
 
-// Merely verifies the mode/length envelope of backend-decoded data against the
-// backend's exact byte segments. All detection, correction and decoding is rxing.
-fn byte_only(raw: &[u8], version: u32, segments: &[Vec<u8>]) -> bool {
-    fn check(raw: &[u8], version: u32, segments: &[Vec<u8>]) -> Option<bool> {
-        let mut bits = BitSource::new(raw);
-        let mut index = 0;
-        while bits.available() >= 4 {
-            match bits.readBits(4).ok()? {
-                0 => break,
-                7 => {
-                    let first = bits.readBits(8).ok()?;
-                    match first {
-                        0..=127 => {}
-                        128..=191 => {
-                            bits.readBits(8).ok()?;
-                        }
-                        192..=223 => {
-                            bits.readBits(16).ok()?;
-                        }
-                        _ => return Some(false),
-                    }
-                }
-                4 => {
-                    let length = bits.readBits(if version < 10 { 8 } else { 16 }).ok()? as usize;
-                    let segment = segments.get(index)?;
-                    if length != segment.len() {
-                        return Some(false);
-                    }
-                    for byte in segment {
-                        if bits.readBits(8).ok()? != u32::from(*byte) {
-                            return Some(false);
-                        }
-                    }
-                    index += 1;
-                }
-                _ => return Some(false),
+enum VerifiedPayload {
+    ExactBytes,
+    MixedText { utf8_len: usize },
+}
+
+// Verify the modes and byte segments in rxing's corrected codewords.
+// rxing remains responsible for decoding and combining the text.
+fn verify_payload(raw: &[u8], version: u32, segments: &[Vec<u8>]) -> Option<VerifiedPayload> {
+    let version = Version::getVersionForNumber(version).ok()?;
+    let mut bits = BitSource::new(raw);
+    let mut index = 0;
+    let mut eci = None;
+    let mut has_non_byte_mode = false;
+    let mut byte_text_is_reliable = true;
+    let mut utf8_len = 0;
+
+    while bits.available() >= 4 {
+        let mode = Mode::forBits(bits.readBits(4).ok()? as u8).ok()?;
+        match mode {
+            Mode::TERMINATOR => break,
+            Mode::ECI => {
+                let first = bits.readBits(8).ok()?;
+                eci = Some(match first {
+                    0..=127 => first,
+                    128..=191 => ((first & 0x3f) << 8) | bits.readBits(8).ok()?,
+                    192..=223 => ((first & 0x1f) << 16) | bits.readBits(16).ok()?,
+                    _ => return None,
+                });
             }
+            Mode::BYTE => {
+                let length = bits
+                    .readBits(mode.getCharacterCountBits(version).into())
+                    .ok()? as usize;
+                let segment = segments.get(index)?;
+                if length != segment.len() {
+                    return None;
+                }
+                for byte in segment {
+                    if bits.readBits(8).ok()? != u32::from(*byte) {
+                        return None;
+                    }
+                }
+                // Without a charset declaration, accept only unambiguous ASCII.
+                byte_text_is_reliable &= match eci {
+                    None => segment.is_ascii(),
+                    Some(assignment) if assignment == Eci::UTF8 as u32 => {
+                        std::str::from_utf8(segment).is_ok()
+                    }
+                    Some(_) => false,
+                };
+                utf8_len += length;
+                index += 1;
+            }
+            Mode::NUMERIC | Mode::ALPHANUMERIC => {
+                let count = bits
+                    .readBits(mode.getCharacterCountBits(version).into())
+                    .ok()? as usize;
+                let mut remaining = if mode == Mode::NUMERIC {
+                    (count / 3) * 10 + [0, 4, 7][count % 3]
+                } else {
+                    (count / 2) * 11 + (count % 2) * 6
+                };
+                while remaining > 0 {
+                    let step = remaining.min(32);
+                    bits.readBits(step).ok()?;
+                    remaining -= step;
+                }
+                has_non_byte_mode = true;
+                utf8_len += count;
+            }
+            _ => return None,
         }
-        Some(index > 0 && index == segments.len())
     }
-    check(raw, version, segments).unwrap_or(false)
+
+    if index == 0 || index != segments.len() {
+        return None;
+    }
+    if !has_non_byte_mode {
+        Some(VerifiedPayload::ExactBytes)
+    } else if byte_text_is_reliable {
+        Some(VerifiedPayload::MixedText { utf8_len })
+    } else {
+        None
+    }
 }

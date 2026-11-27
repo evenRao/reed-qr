@@ -14,7 +14,7 @@ name = "_native"
 crate-type = ["cdylib"]
 
 [dependencies]
-reed-qr-core = { path = "../reed-qr-core", version = "0.1.0" }
+reed-qr-core = { path = "../reed-qr-core", version = "0.1.2" }
 pyo3 = { workspace = true, features = ["extension-module"] }
 
 [lints]

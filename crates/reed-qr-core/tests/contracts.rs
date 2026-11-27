@@ -13,6 +13,10 @@ fn independent_qr(payload: &[u8], byte_mode: bool) -> GrayImage {
     } else {
         QrCode::new(payload).unwrap()
     };
+    render_qr(&code)
+}
+
+fn render_qr(code: &QrCode) -> GrayImage {
     let modules = code.width();
     let scale = 6;
     let side = (modules + 8) * scale;
@@ -83,30 +87,93 @@ fn mixed_modes_do_not_mislabel_byte_segments_as_the_whole_payload() {
     bits.push_byte_data(b"hello").unwrap();
     bits.push_terminator(EcLevel::M).unwrap();
     let code = QrCode::with_bits(bits, EcLevel::M).unwrap();
-    let modules = code.width();
-    let image = GrayImage::from_fn(
-        ((modules + 8) * 6) as u32,
-        ((modules + 8) * 6) as u32,
-        |x, y| {
-            let (x, y) = (x as usize / 6, y as usize / 6);
-            image::Luma([
-                if x >= 4
-                    && y >= 4
-                    && x < modules + 4
-                    && y < modules + 4
-                    && code[(x - 4, y - 4)] == Color::Dark
-                {
-                    0
-                } else {
-                    255
-                },
-            ])
-        },
-    );
-    let result = decode(&image).remove(0);
+    let result = decode(&render_qr(&code)).remove(0);
     assert_eq!(result.byte_segments, vec![b"hello".to_vec()]);
     assert!(result.payload_bytes.is_none());
-    assert_eq!(result.payload_status, PayloadStatus::Unsupported);
+    assert_eq!(result.text.as_deref(), Some("12345hello"));
+    assert_eq!(result.payload_status, PayloadStatus::TextOnly);
+}
+
+#[test]
+fn mixed_mode_byte_segments_require_reliable_text() {
+    for (bytes, utf8_eci, expected) in [
+        ("世界".as_bytes(), true, Some("12345世界")),
+        ("世界".as_bytes(), false, None),
+        (b"\xff".as_slice(), false, None),
+    ] {
+        let mut bits = Bits::new(Version::Normal(3));
+        bits.push_numeric_data(b"12345").unwrap();
+        if utf8_eci {
+            bits.push_eci_designator(26).unwrap();
+        }
+        bits.push_byte_data(bytes).unwrap();
+        bits.push_terminator(EcLevel::M).unwrap();
+        let code = QrCode::with_bits(bits, EcLevel::M).unwrap();
+        let result = decode(&render_qr(&code)).remove(0);
+        assert_eq!(result.text.as_deref(), expected);
+        assert_eq!(result.byte_segments, vec![bytes.to_vec()]);
+        assert!(result.payload_bytes.is_none());
+        assert_eq!(
+            result.payload_status,
+            if expected.is_some() {
+                PayloadStatus::TextOnly
+            } else {
+                PayloadStatus::Unsupported
+            }
+        );
+    }
+}
+
+#[test]
+fn zxing_mixed_mode_fixtures_preserve_complete_text_and_partial_bytes() {
+    let bookmark = r"MEBKM:URL:http\://en.wikipedia.org/wiki/Main_Page;;";
+    let bookmark_segments: &[&[u8]] = &[br"http\://en.wikipedia.org/wiki/Main_Page;;"];
+    let contact = "Sean Owen\r\nsrowen@google.com\r\n917-364-2918\r\nhttp://awesome-thoughts.com";
+    let contact_segments: &[&[u8]] = &[
+        b"ean",
+        b"wen\r\nsrowen@google",
+        b"com\r\n",
+        b"\r\nhttp",
+        b"awesome",
+        b"thoughts",
+        b"com",
+    ];
+    let fixtures = [
+        (
+            "2.png",
+            include_bytes!("fixtures/zxing-qrcode-1/2.png").as_slice(),
+            bookmark,
+            bookmark_segments,
+        ),
+        (
+            "10.png",
+            include_bytes!("fixtures/zxing-qrcode-1/10.png").as_slice(),
+            bookmark,
+            bookmark_segments,
+        ),
+        (
+            "12.png",
+            include_bytes!("fixtures/zxing-qrcode-1/12.png").as_slice(),
+            bookmark,
+            bookmark_segments,
+        ),
+        (
+            "16.png",
+            include_bytes!("fixtures/zxing-qrcode-1/16.png").as_slice(),
+            contact,
+            contact_segments,
+        ),
+    ];
+
+    for (name, png, expected, segments) in fixtures {
+        let detections = Decoder::default().decode_image(png).unwrap();
+        assert_eq!(detections.len(), 1, "{name}");
+        let result = &detections[0];
+        assert_eq!(result.text.as_deref(), Some(expected), "{name}");
+        assert_eq!(result.payload_status, PayloadStatus::TextOnly, "{name}");
+        assert!(result.payload_bytes.is_none(), "{name}");
+        assert_eq!(result.byte_segments, segments, "{name}");
+    }
 }
 
 #[test]

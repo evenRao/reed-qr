@@ -338,11 +338,12 @@ returned coordinates.
 Use `payload_status.value` when serializing the status as a string:
 
 - `exact_bytes`: complete byte payload is verified. Binary data may have no text.
-- `text_only`: faithful text is available, but complete original bytes are not
-  claimed. Numeric and alphanumeric symbols commonly take this path.
-- `unsupported`: complete payload fidelity is unavailable. Mixed modes and
-  structured append have limited support; do not treat concatenated byte segments
-  as a verified complete payload.
+- `text_only`: faithful text is available without complete original bytes. This
+  includes numeric and alphanumeric symbols and supported mixed-mode symbols.
+- `unsupported`: complete payload fidelity is unavailable, for example with
+  structured append or mixed-mode byte segments of uncertain encoding.
+
+Mixed-mode byte segments represent only part of the payload.
 
 A successful scan does not authorize opening a URL, executing a command, or
 completing a transaction. Validate decoded content against the application's
@@ -517,7 +518,7 @@ Rust 1.99.1. Add it to an application:
 ```sh
 cargo new qr-demo
 cd qr-demo
-cargo add reed-qr-core@0.1.0
+cargo add reed-qr-core@0.1.2
 ```
 
 Replace `src/main.rs` with:
