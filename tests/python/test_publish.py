@@ -3,6 +3,7 @@
 import copy
 import io
 import tarfile
+import tomllib
 import zipfile
 
 import pytest
@@ -11,6 +12,9 @@ from scripts import prepare_pypi_release as release
 
 SHA = "a" * 40
 REPOSITORY = "evenRao/reed-qr"
+PROJECT = tomllib.loads((release.ROOT / "pyproject.toml").read_text(encoding="utf-8"))["project"]
+VERSION = PROJECT["version"]
+DIST = f"reed_qr-{VERSION}"
 
 
 @pytest.fixture
@@ -104,7 +108,7 @@ def test_check_run_paginates_and_writes_selected_ids(ci_metadata, monkeypatch, t
     monkeypatch.setenv("GITHUB_REPOSITORY", REPOSITORY)
     monkeypatch.setenv("GITHUB_SHA", SHA)
     monkeypatch.setenv("GITHUB_OUTPUT", str(tmp_path / "outputs"))
-    release.check_run("123", "0.1.0")
+    release.check_run("123", VERSION)
     assert "page=2" in calls[-1]
     assert (tmp_path / "outputs").read_text() == (
         "artifact_ids=" + ",".join(map(str, range(1, 21))) + "\n"
@@ -114,7 +118,7 @@ def test_check_run_paginates_and_writes_selected_ids(ci_metadata, monkeypatch, t
 @pytest.mark.parametrize("run_id", ["0", "-1", "123; echo command", "$(command)"])
 def test_run_id_requires_digits(run_id):
     with pytest.raises(ValueError, match="positive integer"):
-        release.check_run(run_id, "0.1.0")
+        release.check_run(run_id, VERSION)
 
 
 @pytest.fixture
@@ -129,16 +133,14 @@ def packages(tmp_path):
     for name, (platform, minor) in release.EXPECTED_ARTIFACTS.items():
         directory = artifacts / name / "dist"
         directory.mkdir(parents=True)
-        path = directory / f"reed_qr-0.1.0-cp3{minor}-cp3{minor}-{tags[platform]}.whl"
+        path = directory / f"{DIST}-cp3{minor}-cp3{minor}-{tags[platform]}.whl"
         with zipfile.ZipFile(path, "w") as archive:
-            archive.writestr(
-                "reed_qr-0.1.0.dist-info/METADATA", "Name: reed-qr\nVersion: 0.1.0\n\n"
-            )
+            archive.writestr(f"{DIST}.dist-info/METADATA", f"Name: reed-qr\nVersion: {VERSION}\n\n")
         (directory / "unrelated.crate").write_bytes(b"not a Python distribution")
-    source = artifacts / release.SOURCE_ARTIFACT / "dist/reed_qr-0.1.0.tar.gz"
-    data = b"Name: reed-qr\nVersion: 0.1.0\n\n"
+    source = artifacts / release.SOURCE_ARTIFACT / "dist" / f"{DIST}.tar.gz"
+    data = f"Name: reed-qr\nVersion: {VERSION}\n\n".encode()
     with tarfile.open(source, "w:gz") as archive:
-        info = tarfile.TarInfo("reed_qr-0.1.0/PKG-INFO")
+        info = tarfile.TarInfo(f"{DIST}/PKG-INFO")
         info.size = len(data)
         archive.addfile(info, io.BytesIO(data))
     return artifacts, tmp_path / "output"
@@ -146,16 +148,22 @@ def packages(tmp_path):
 
 def test_stages_only_twenty_wheels_and_one_source(packages):
     artifacts, output = packages
-    release.stage("0.1.0", artifacts, output)
+    release.stage(VERSION, artifacts, output)
     assert len(list(output.glob("*.whl"))) == 20
     assert len(list(output.glob("*.tar.gz"))) == 1
     assert len(list(output.iterdir())) == 21
 
 
 @pytest.mark.parametrize(
-    "defect", ["missing_wheel", "wrong_abi", "wrong_metadata", "missing_source"]
+    ("defect", "message"),
+    [
+        ("missing_wheel", "Expected one wheel"),
+        ("wrong_abi", "Wheel version, Python ABI, or platform mismatch"),
+        ("wrong_metadata", "Distribution metadata must identify reed-qr"),
+        ("missing_source", "Expected one source distribution"),
+    ],
 )
-def test_stage_rejects_incomplete_or_mismatched_packages(packages, defect):
+def test_stage_rejects_incomplete_or_mismatched_packages(packages, defect, message):
     artifacts, output = packages
     wheel = next(artifacts.rglob("*.whl"))
     if defect == "missing_wheel":
@@ -167,12 +175,12 @@ def test_stage_rejects_incomplete_or_mismatched_packages(packages, defect):
     elif defect == "wrong_metadata":
         with zipfile.ZipFile(wheel, "w") as archive:
             archive.writestr(
-                "reed_qr-0.1.0.dist-info/METADATA", "Name: different-package\nVersion: 0.1.0\n\n"
+                f"{DIST}.dist-info/METADATA", f"Name: different-package\nVersion: {VERSION}\n\n"
             )
     else:
         next(artifacts.rglob("*.tar.gz")).unlink()
-    with pytest.raises(ValueError):
-        release.stage("0.1.0", artifacts, output)
+    with pytest.raises(ValueError, match=message):
+        release.stage(VERSION, artifacts, output)
     assert not output.exists()
 
 
@@ -181,5 +189,5 @@ def test_stage_refuses_to_mix_existing_packages(packages):
     output.mkdir()
     (output / "old.whl").write_bytes(b"old")
     with pytest.raises(ValueError, match="must be empty"):
-        release.stage("0.1.0", artifacts, output)
+        release.stage(VERSION, artifacts, output)
     assert (output / "old.whl").read_bytes() == b"old"
